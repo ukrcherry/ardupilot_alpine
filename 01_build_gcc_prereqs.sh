@@ -36,12 +36,22 @@ build_autoconf_pkg() {
         return 0
     fi
 
-    log_info "Building ${name} ${VER_GMP:+v} …"
+    log_info "Building ${name} ..."
+
+    # extract_to prints ONLY the directory path on stdout (log lines go to stderr)
     local src_dir
     src_dir=$(extract_to "${tarball}" "${dir_name}")
-    mkdir -p "${src_dir}/_build"
-    cd "${src_dir}/_build"
 
+    # Guard: ensure we got a real path back, not log garbage
+    if [[ ! -d "${src_dir}" ]]; then
+        log_error "extract_to did not return a valid directory (got: '${src_dir}')"
+    fi
+
+    local build_dir="${src_dir}/_build"
+    mkdir -p "${build_dir}"
+    cd "${build_dir}"
+
+    log_info "Configuring ${name} in ${build_dir} ..."
     # shellcheck disable=SC2086
     ../configure \
         --prefix="${AP_PREFIX}" \
@@ -49,10 +59,13 @@ build_autoconf_pkg() {
         --enable-static \
         --disable-nls \
         ${extra_cfg} \
-        2>&1 | tee -a "${AP_LOG}"
+        2>&1 | tee -a "${AP_LOG}" >&2
 
-    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}"
-    make install 2>&1 | tee -a "${AP_LOG}"
+    log_info "Compiling ${name} (jobs=${MAKE_JOBS}) ..."
+    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}" >&2
+
+    log_info "Installing ${name} ..."
+    make install 2>&1 | tee -a "${AP_LOG}" >&2
 
     touch "${stamp}"
     log_ok "${name} installed to ${AP_PREFIX}"
