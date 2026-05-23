@@ -106,11 +106,10 @@ log_info "Installing host packages …"
 apk add --no-cache "${HOST_PKGS[@]}" 2>&1 | tee -a "${AP_LOG}"
 log_ok "Host packages installed."
 
-# ---- Create prefix directory tree ------------------------------------------
-install -d "${AP_PREFIX}" "${AP_SRC}"
-touch "${AP_LOG}"
+# ---- Confirm prefix directory tree (created by config.env on source) -------
+chmod 777 "${AP_PREFIX}" "${AP_SRC}"   # allow non-root scripts to write here
 chmod 666 "${AP_LOG}"
-log_ok "Directory tree created under ${AP_PREFIX}"
+log_ok "Directory tree ready: ${AP_PREFIX}"
 
 # ---- Verify required commands -----------------------------------------------
 for cmd in gcc g++ make wget git python3 pip3 gawk flex bison patch; do
