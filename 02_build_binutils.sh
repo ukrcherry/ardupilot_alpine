@@ -9,6 +9,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.env"
+[[ -f "${AP_PREFIX}/prereqs.env" ]] && source "${AP_PREFIX}/prereqs.env"
 
 section "02  Binutils ${VER_BINUTILS} → ${TARGET}"
 
@@ -38,17 +39,17 @@ else
         --enable-lto \
         --enable-plugins \
         --enable-gold \
-        --with-gmp="${AP_PREFIX}" \
-        --with-mpfr="${AP_PREFIX}" \
-        --with-mpc="${AP_PREFIX}" \
-        --with-isl="${AP_PREFIX}" \
-        2>&1 | tee -a "${AP_LOG}"
+        --with-gmp="${GCC_PREREQ_PREFIX:-/usr}" \
+        --with-mpfr="${GCC_PREREQ_PREFIX:-/usr}" \
+        --with-mpc="${GCC_PREREQ_PREFIX:-/usr}" \
+        --with-isl="${GCC_PREREQ_PREFIX:-/usr}" \
+        2>&1 | tee -a "${AP_LOG}" >&2
 
     log_info "Building binutils (jobs=${MAKE_JOBS}) …"
-    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}"
+    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}" >&2
 
     log_info "Installing binutils …"
-    make install 2>&1 | tee -a "${AP_LOG}"
+    make install 2>&1 | tee -a "${AP_LOG}" >&2
 
     touch "${STAMP}"
     log_ok "binutils-${VER_BINUTILS} installed."

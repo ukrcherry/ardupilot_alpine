@@ -16,6 +16,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.env"
+[[ -f "${AP_PREFIX}/prereqs.env" ]] && source "${AP_PREFIX}/prereqs.env"
 
 section "03  GCC ${VER_GCC} + Newlib ${VER_NEWLIB} → ${TARGET}"
 
@@ -35,10 +36,10 @@ GCC_COMMON_FLAGS=(
     --target="${TARGET}"
     --with-sysroot="${AP_PREFIX}/${TARGET}"
     --with-native-system-header-dir=/include
-    --with-gmp="${AP_PREFIX}"
-    --with-mpfr="${AP_PREFIX}"
-    --with-mpc="${AP_PREFIX}"
-    --with-isl="${AP_PREFIX}"
+    --with-gmp="${GCC_PREREQ_PREFIX:-/usr}"
+    --with-mpfr="${GCC_PREREQ_PREFIX:-/usr}"
+    --with-mpc="${GCC_PREREQ_PREFIX:-/usr}"
+    --with-isl="${GCC_PREREQ_PREFIX:-/usr}"
     --disable-nls
     --disable-shared
     --disable-threads
@@ -104,11 +105,11 @@ else
     ../configure \
         "${GCC_COMMON_FLAGS[@]}" \
         --enable-languages=c \
-        2>&1 | tee -a "${AP_LOG}"
+        2>&1 | tee -a "${AP_LOG}" >&2
 
     log_info "Building GCC stage 1 (jobs=${MAKE_JOBS}) …"
-    make -j"${MAKE_JOBS}" all-gcc 2>&1 | tee -a "${AP_LOG}"
-    make install-gcc 2>&1 | tee -a "${AP_LOG}"
+    make -j"${MAKE_JOBS}" all-gcc 2>&1 | tee -a "${AP_LOG}" >&2
+    make install-gcc 2>&1 | tee -a "${AP_LOG}" >&2
 
     touch "${STAGE1_STAMP}"
     log_ok "GCC stage 1 done."
@@ -135,11 +136,11 @@ else
         --enable-newlib-register-fini \
         --disable-newlib-supplied-syscalls \
         --disable-nls \
-        2>&1 | tee -a "${AP_LOG}"
+        2>&1 | tee -a "${AP_LOG}" >&2
 
     log_info "Building Newlib (jobs=${MAKE_JOBS}) …"
-    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}"
-    make install 2>&1 | tee -a "${AP_LOG}"
+    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}" >&2
+    make install 2>&1 | tee -a "${AP_LOG}" >&2
 
     touch "${NEWLIB_STAMP}"
     log_ok "Newlib done."
@@ -160,15 +161,15 @@ else
         "${GCC_COMMON_FLAGS[@]}" \
         --enable-languages=c,c++ \
         --with-headers="${AP_PREFIX}/${TARGET}/include" \
-        2>&1 | tee -a "${AP_LOG}"
+        2>&1 | tee -a "${AP_LOG}" >&2
 
     log_info "Building GCC stage 2 (jobs=${MAKE_JOBS}) …"
-    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}"
-    make install 2>&1 | tee -a "${AP_LOG}"
+    make -j"${MAKE_JOBS}" 2>&1 | tee -a "${AP_LOG}" >&2
+    make install 2>&1 | tee -a "${AP_LOG}" >&2
 
     # libstdc++ headers & lib
-    make -j"${MAKE_JOBS}" all-target-libstdc++-v3 2>&1 | tee -a "${AP_LOG}"
-    make install-target-libstdc++-v3 2>&1 | tee -a "${AP_LOG}"
+    make -j"${MAKE_JOBS}" all-target-libstdc++-v3 2>&1 | tee -a "${AP_LOG}" >&2
+    make install-target-libstdc++-v3 2>&1 | tee -a "${AP_LOG}" >&2
 
     touch "${STAGE2_STAMP}"
     log_ok "GCC stage 2 done."
