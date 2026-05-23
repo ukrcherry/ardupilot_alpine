@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
 # =============================================================================
-# 07_setup_env.sh
-# Source this file before running any ArduPilot waf commands.
+# 07_setup_env.sh — Source this before running any ArduPilot waf commands.
 #
 #   source ./07_setup_env.sh
 #
-# It exports every PATH and variable needed by waf, the cross compiler,
-# ccache, and Python.  Add this source line to ~/.bashrc or ~/.profile for
-# a persistent environment.
+# Exports every PATH / variable needed by waf, the arm-none-eabi cross
+# compiler, ccache, and Python.
+# Add to ~/.bashrc or ~/.profile for a persistent environment.
 # =============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/config.env"
+[[ -f "${AP_PREFIX}/prereqs.env" ]] && source "${AP_PREFIX}/prereqs.env"
 
-# ---- Toolchain binaries (arm-none-eabi-gcc, cmake, ninja, ccache …) --------
-export PATH="${AP_PREFIX}/lib/ccache:${AP_PREFIX}/bin:${PATH}"
+# ---- Toolchain binaries (arm-none-eabi-gcc, etc.) ---------------------------
+# ccache symlinks go first so they transparently wrap the cross compiler.
+CCACHE_LINK_DIR="${AP_PREFIX}/lib/ccache"
+export PATH="${CCACHE_LINK_DIR}:${AP_PREFIX}/bin:${PATH}"
+
+# cmake, ninja, ccache are installed system-wide by apk — already in PATH.
 
 # ---- pkg-config -------------------------------------------------------------
-export PKG_CONFIG_PATH="${AP_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+export PKG_CONFIG_PATH="${AP_PREFIX}/lib/pkgconfig:/usr/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
-# ---- Linker / compiler flags so host tools find our libraries ---------------
-export CPPFLAGS="-I${AP_PREFIX}/include"
-export LDFLAGS="-L${AP_PREFIX}/lib -Wl,-rpath,${AP_PREFIX}/lib"
+# ---- Linker / compiler flags so host tools find our installed libraries -----
+export CPPFLAGS="-I${AP_PREFIX}/include -I/usr/include"
+export LDFLAGS="-L${AP_PREFIX}/lib -L/usr/lib -Wl,-rpath,${AP_PREFIX}/lib"
 
 # ---- ccache settings --------------------------------------------------------
 export CCACHE_DIR="${HOME}/.ccache"
@@ -29,16 +33,13 @@ export CCACHE_COMPRESS=1
 
 # ---- ArduPilot / waf --------------------------------------------------------
 export ARDUPILOT_HOME="${ARDUPILOT_HOME:-${HOME}/ardupilot}"
-
-# waf finds Python automatically; point it at the right Python explicitly
 export WAF_PYTHON=$(command -v python3)
 
 # ---- Verification -----------------------------------------------------------
 _check_tool() {
-    local label="$1"; local cmd="$2"
+    local label="$1" cmd="$2"
     if command -v "${cmd}" &>/dev/null; then
-        local ver
-        ver=$("${cmd}" --version 2>&1 | head -1)
+        local ver; ver=$("${cmd}" --version 2>&1 | head -1)
         echo -e "  \033[0;32m✓\033[0m ${label}: ${ver}"
     else
         echo -e "  \033[0;31m✗\033[0m ${label}: NOT FOUND"
@@ -47,7 +48,7 @@ _check_tool() {
 
 echo ""
 echo "ArduPilot / Alpine build environment"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 _check_tool "arm-none-eabi-gcc" "arm-none-eabi-gcc"
 _check_tool "arm-none-eabi-g++" "arm-none-eabi-g++"
 _check_tool "cmake"             "cmake"
@@ -57,14 +58,14 @@ _check_tool "python3"           "python3"
 echo ""
 echo "  ARDUPILOT_HOME = ${ARDUPILOT_HOME}"
 echo "  AP_PREFIX      = ${AP_PREFIX}"
+echo "  ccache links   = ${CCACHE_LINK_DIR}"
 echo ""
 
-# Verify empy version (critical)
 python3 -c "
 import em, sys
 v = tuple(int(x) for x in em.__version__.split('.')[:2])
 if v >= (4,0):
-    print(f'  \033[0;31m✗\033[0m empy {em.__version__} >= 4.0 — will BREAK waf. Run: pip install \"empy>=3.3,<4\"')
+    print(f'  \033[0;31m✗\033[0m empy {em.__version__} >= 4.0 — BREAKS waf. Run: pip install \"empy>=3.3,<4\"')
     sys.exit(1)
 else:
     print(f'  \033[0;32m✓\033[0m empy {em.__version__} (< 4.0 — OK)')
